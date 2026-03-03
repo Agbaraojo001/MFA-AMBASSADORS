@@ -305,7 +305,7 @@ select{cursor:pointer;
           <div class="field" id="f-voters_card_no">
             <label>Voters Card No. <span class="opt">*</span></label>
             <input type="text" id="voters_card_no" placeholder="e.g. 9AA1B2C3D4E5F6"
-                   maxlength="30">
+                   maxlength="50">
             <div class="error-msg" id="e-voters_card_no"></div>
           </div>
         </div>
@@ -420,7 +420,7 @@ function clientValidate() {
   const errs = [];
   const nameRe = /^[a-zA-Z\s'\-.]+$/;
 
-  const surname = document.getElementById('surname')?.value.trim() || '';
+  const surname = document.getElementById('surname').value.trim();
   if (!surname)
     errs.push({ field:'surname', message:'Surname is required.' });
   else if (surname.length < 2)
@@ -428,7 +428,7 @@ function clientValidate() {
   else if (!nameRe.test(surname))
     errs.push({ field:'surname', message:'Surname may only contain letters, spaces, hyphens, and apostrophes.' });
 
-  const otherNames = document.getElementById('other_names')?.value.trim() || '';
+  const otherNames = document.getElementById('other_names').value.trim();
   if (!otherNames)
     errs.push({ field:'other_names', message:'Other names are required.' });
   else if (otherNames.length < 2)
@@ -439,7 +439,7 @@ function clientValidate() {
   if (!document.querySelector('input[name="gender"]:checked'))
     errs.push({ field:'gender', message:'Please select your gender.' });
 
-  const phone = document.getElementById('telephone')?.value.trim() || '';
+  const phone = document.getElementById('telephone').value.trim();
   if (!phone) {
     errs.push({ field:'telephone', message:'Phone number is required.' });
   } else {
@@ -455,29 +455,44 @@ function clientValidate() {
   if (!document.querySelector('input[name="availability"]:checked'))
     errs.push({ field:'availability', message:'Please indicate your availability.' });
 
-  // ✅ REQUIRED: APC Membership No.
-  const apcMembershipNo = document.getElementById('apc_membership_no')?.value.trim() || '';
-  if (!apcMembershipNo)
-    errs.push({ field:'apc_membership_no', message:'APC Membership No. is required.' });
-  else if (apcMembershipNo.length < 5)
-    errs.push({ field:'apc_membership_no', message:'APC Membership No. is too short.' });
-  else if (apcMembershipNo.length > 50)
-    errs.push({ field:'apc_membership_no', message:'APC Membership No. is too long.' });
+  // ✅ NEW: APC Membership No. (required)
+  const apcMembershipNoEl = document.getElementById('apc_membership_no');
+  if (apcMembershipNoEl) {
+    const apcMembershipNo = apcMembershipNoEl.value.trim();
+    if (!apcMembershipNo) {
+      errs.push({ field:'apc_membership_no', message:'APC Membership No. is required.' });
+    } else if (apcMembershipNo.length < 5) {
+      errs.push({ field:'apc_membership_no', message:'APC Membership No. is too short.' });
+    } else if (apcMembershipNo.length > 50) {
+      errs.push({ field:'apc_membership_no', message:'APC Membership No. is too long.' });
+    }
+    // Optional pattern example (edit/remove if you want strict format):
+    // else if (!/^[A-Za-z0-9\/\-]+$/.test(apcMembershipNo))
+    //   errs.push({ field:'apc_membership_no', message:'APC Membership No. contains invalid characters.' });
+  }
 
-  // ✅ REQUIRED: Voters Card No.
-  const votersCardNo = document.getElementById('voters_card_no')?.value.trim() || '';
-  if (!votersCardNo)
-    errs.push({ field:'voters_card_no', message:'Voters Card No. is required.' });
-  else if (votersCardNo.length < 5)
-    errs.push({ field:'voters_card_no', message:'Voters Card No. is too short.' });
-  else if (votersCardNo.length > 50)
-    errs.push({ field:'voters_card_no', message:'Voters Card No. is too long.' });
+  // ✅ NEW: Voters Card No. (required)
+  // NOTE: change the id below if your input uses a different id
+  const votersCardNoEl = document.getElementById('voters_card_no');
+  if (votersCardNoEl) {
+    const votersCardNo = votersCardNoEl.value.trim();
+    if (!votersCardNo) {
+      errs.push({ field:'voters_card_no', message:'Voters Card No. is required.' });
+    } else if (votersCardNo.length < 5) {
+      errs.push({ field:'voters_card_no', message:'Voters Card No. is too short.' });
+    } else if (votersCardNo.length > 50) {
+      errs.push({ field:'voters_card_no', message:'Voters Card No. is too long.' });
+    }
+    // Optional: allow only alphanumerics and common separators
+    // else if (!/^[A-Za-z0-9\-\/\s]+$/.test(votersCardNo))
+    //   errs.push({ field:'voters_card_no', message:'Voters Card No. contains invalid characters.' });
+  }
 
   return errs;
 }
 
 // ── Submit handler ────────────────────────────────────────────
-document.getElementById('submitBtn')?.addEventListener('click', async () => {
+document.getElementById('submitBtn').addEventListener('click', async () => {
   clearAll();
 
   // Instant client check
@@ -502,12 +517,11 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
     other_names:       document.getElementById('other_names').value.trim(),
     gender:            document.querySelector('input[name="gender"]:checked')?.value,
     telephone:         document.getElementById('telephone').value.trim(),
-    lga:               document.getElementById('lga')?.value.trim()        || null,
-    town:              document.getElementById('town')?.value.trim()       || null,
-    occupation:        document.getElementById('occupation')?.value.trim() || null,
-    // ✅ NOW REQUIRED (send as real strings, not null)
-    apc_membership_no: document.getElementById('apc_membership_no').value.trim(),
-    voters_card_no:    document.getElementById('voters_card_no').value.trim(),
+    lga:               document.getElementById('lga').value.trim()               || null,
+    town:              document.getElementById('town').value.trim()               || null,
+    occupation:        document.getElementById('occupation').value.trim()         || null,
+    apc_membership_no: document.getElementById('apc_membership_no').value.trim() || null,
+    voters_card_no:    document.getElementById('voters_card_no').value.trim()     || null,
     availability:      document.querySelector('input[name="availability"]:checked')?.value,
   };
 
@@ -525,8 +539,8 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
 
     // ── 201 Success ──
     if (res.status === 201 && data.success) {
-      const parts = (data.full_name || '').split(' ').filter(Boolean);
-      const first = parts[0] || '';
+      const parts = data.full_name.split(' ');
+      const first = parts[0];
       const rest  = parts.slice(1).join(' ');
       document.getElementById('s-greeting').textContent = 'Dear ' + first + ',';
       document.getElementById('s-fullname').textContent  = rest;
@@ -557,32 +571,10 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
     if (res.status === 409 && data.code === 'DUPLICATE_PHONE') {
       showBanner(
         '&#9888; This phone number is already registered. ' +
-        (data.reg_code ? 'Your existing code is: <strong>' + data.reg_code + '</strong>' : ''),
+        'Your existing code is: <strong>' + data.reg_code + '</strong>',
         'warning'
       );
       setError('telephone', 'This phone number is already registered.');
-      return;
-    }
-
-    // ── 409 Duplicate APC Membership No. ──
-    if (res.status === 409 && data.code === 'DUPLICATE_APC_MEMBERSHIP_NO') {
-      showBanner(
-        '&#9888; This APC Membership No. is already registered. ' +
-        (data.reg_code ? 'Existing code is: <strong>' + data.reg_code + '</strong>' : ''),
-        'warning'
-      );
-      setError('apc_membership_no', 'This APC Membership No. is already registered.');
-      return;
-    }
-
-    // ── 409 Duplicate Voters Card No. ──
-    if (res.status === 409 && data.code === 'DUPLICATE_VOTERS_CARD_NO') {
-      showBanner(
-        '&#9888; This Voters Card No. is already registered. ' +
-        (data.reg_code ? 'Existing code is: <strong>' + data.reg_code + '</strong>' : ''),
-        'warning'
-      );
-      setError('voters_card_no', 'This Voters Card No. is already registered.');
       return;
     }
 
@@ -638,12 +630,9 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
       );
     }
   } finally {
-    const btn     = document.getElementById('submitBtn');
-    const spinner = document.getElementById('spinner');
-    const btnText = document.getElementById('btnText');
-    if (btn) btn.disabled = false;
-    if (spinner) spinner.style.display = 'none';
-    if (btnText) btnText.innerHTML = '&#9733;&nbsp; Register &amp; Get My Code &nbsp;&#9733;';
+    btn.disabled          = false;
+    spinner.style.display = 'none';
+    btnText.innerHTML     = '&#9733;&nbsp; Register &amp; Get My Code &nbsp;&#9733;';
   }
 });
 
@@ -656,10 +645,8 @@ function resetForm() {
   });
   document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
   clearAll();
-  const successView = document.getElementById('successView');
-  const formView    = document.getElementById('formView');
-  if (successView) successView.style.display = 'none';
-  if (formView)    formView.style.display    = 'block';
+  document.getElementById('successView').style.display = 'none';
+  document.getElementById('formView').style.display    = 'block';
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
