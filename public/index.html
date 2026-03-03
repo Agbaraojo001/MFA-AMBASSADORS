@@ -274,12 +274,12 @@ select{cursor:pointer;
         <div class="form-row">
           <div class="field" id="f-lga">
             <label>Local Govt. of Residence <span class="opt">(optional)</span></label>
-            <input type="text" id="lga" placeholder="e.g. Alimosho" maxlength="100">
+            <input type="text" id="lga" placeholder="e.g. Ibeju/Lekki" maxlength="100">
             <div class="error-msg" id="e-lga"></div>
           </div>
           <div class="field" id="f-town">
             <label>Town of Residence <span class="opt">(optional)</span></label>
-            <input type="text" id="town" placeholder="e.g. Ikotun" maxlength="100">
+            <input type="text" id="town" placeholder="e.g. Adeba" maxlength="100">
             <div class="error-msg" id="e-town"></div>
           </div>
         </div>
@@ -454,6 +454,39 @@ function clientValidate() {
 
   if (!document.querySelector('input[name="availability"]:checked'))
     errs.push({ field:'availability', message:'Please indicate your availability.' });
+
+  // ✅ NEW: APC Membership No. (required)
+  const apcMembershipNoEl = document.getElementById('apc_membership_no');
+  if (apcMembershipNoEl) {
+    const apcMembershipNo = apcMembershipNoEl.value.trim();
+    if (!apcMembershipNo) {
+      errs.push({ field:'apc_membership_no', message:'APC Membership No. is required.' });
+    } else if (apcMembershipNo.length < 5) {
+      errs.push({ field:'apc_membership_no', message:'APC Membership No. is too short.' });
+    } else if (apcMembershipNo.length > 50) {
+      errs.push({ field:'apc_membership_no', message:'APC Membership No. is too long.' });
+    }
+    // Optional pattern example (edit/remove if you want strict format):
+    // else if (!/^[A-Za-z0-9\/\-]+$/.test(apcMembershipNo))
+    //   errs.push({ field:'apc_membership_no', message:'APC Membership No. contains invalid characters.' });
+  }
+
+  // ✅ NEW: Voters Card No. (required)
+  // NOTE: change the id below if your input uses a different id
+  const votersCardNoEl = document.getElementById('voters_card_no');
+  if (votersCardNoEl) {
+    const votersCardNo = votersCardNoEl.value.trim();
+    if (!votersCardNo) {
+      errs.push({ field:'voters_card_no', message:'Voters Card No. is required.' });
+    } else if (votersCardNo.length < 5) {
+      errs.push({ field:'voters_card_no', message:'Voters Card No. is too short.' });
+    } else if (votersCardNo.length > 50) {
+      errs.push({ field:'voters_card_no', message:'Voters Card No. is too long.' });
+    }
+    // Optional: allow only alphanumerics and common separators
+    // else if (!/^[A-Za-z0-9\-\/\s]+$/.test(votersCardNo))
+    //   errs.push({ field:'voters_card_no', message:'Voters Card No. contains invalid characters.' });
+  }
 
   return errs;
 }
