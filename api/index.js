@@ -1,3 +1,4 @@
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -14,13 +15,24 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// ── Security headers + HSTS (FIX #10) ────────────────────────────────────────
+// ── Security headers + HSTS ───────────────────────────────────────────────────
 app.use(helmet({
-  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true }
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      mediaSrc: ["'self'"],
+      connectSrc: ["'self'"],
+    },
+  },
 }));
 
-// ── CORS — FIX #1: crash on missing CORS_ORIGIN, never default to * ──────────
-const allowedOrigin = process.env.CORS_ORIGIN;
+// ── CORS ──────────────────────────────────────────────────────────────────────
+const allowedOrigin = process.env.CORS_ORIGIN || (!isProd ? 'http://localhost:3000' : null);
 if (!allowedOrigin) {
   console.error('FATAL: CORS_ORIGIN environment variable is not set');
   process.exit(1);
@@ -34,13 +46,13 @@ app.use(cors({
 // ── Body parser ───────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10kb' }));
 
-// ── Request correlation ID — FIX #9 ──────────────────────────────────────────
+// ── Request correlation ID ────────────────────────────────────────────────────
 app.use((req, _res, next) => {
   req.requestId = req.headers['x-request-id'] || uuidv4();
   next();
 });
 
-// ── In-memory rate limiter (backup only — see DB rate limiting below) ─────────
+// ── In-memory rate limiter (backup — DB rate limiting is primary) ─────────────
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -54,7 +66,7 @@ app.use('/api/register', limiter);
 
 /**
  * Normalize Nigerian phone to E.164.
- * FIX #2: reject non-Nigerian / unrecognised formats entirely.
+ * Rejects non-Nigerian / unrecognised formats entirely.
  */
 function normalizePhone(raw) {
   const digits = raw.replace(/\D/g, '');
@@ -75,12 +87,17 @@ function normalizePhone(raw) {
   return normalized;
 }
 
-/** FIX #7: membership number always uppercase */
+/** Membership number always uppercase */
 function normalizeMembership(raw) {
   return raw ? raw.trim().toUpperCase() : raw;
 }
 
-// ── DB-based rate limiter — FIX #6 (survives Vercel cold starts) ─────────────
+/** Validate name fields — letters, spaces, hyphens, apostrophes only */
+function isValidName(value) {
+  return /^[A-Za-z\s\-']+$/.test(value.trim());
+}
+
+// ── DB-based rate limiter (survives Vercel cold starts) ───────────────────────
 async function isRateLimited(ip) {
   const windowStart = new Date(Date.now() - 15 * 60 * 1000).toISOString();
   const { count, error } = await supabase
@@ -91,7 +108,7 @@ async function isRateLimited(ip) {
 
   if (error) {
     console.error('Rate limit DB check failed, allowing through:', error.message);
-    return false; // fail open — don't block legitimate users on DB hiccup
+    return false;
   }
   return count >= 10;
 }
@@ -121,12 +138,21 @@ app.post('/api/register', async (req, res) => {
 
   // Destructure body
   const {
-    full_name, email, phone, state, lga, ward,
-    polling_unit, apc_membership_no, years_in_apc, occupation,
+    surname,
+    other_names,
+    gender,
+    telephone,
+    apc_membership_no,
+    availability,
+    // optional
+    lga,
+    town,
+    occupation,
+    voters_card_no,
   } = req.body;
 
-  // Required field check
-  const required = { full_name, email, phone, state, lga, ward, polling_unit, years_in_apc };
+  // ── Required field presence check ─────────────────────────────────────────
+  const required = { surname, other_names, gender, telephone, apc_membership_no, availability };
   const missing = Object.entries(required)
     .filter(([, v]) => !v || String(v).trim() === '')
     .map(([k]) => k);
@@ -134,44 +160,94 @@ app.post('/api/register', async (req, res) => {
     return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}` });
   }
 
-  // Email format
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-    return res.status(400).json({ error: 'Invalid email address.' });
+  // ── surname validation ─────────────────────────────────────────────────────
+  const surnameClean = surname.trim();
+  if (surnameClean.length < 2) {
+    return res.status(400).json({ error: 'Surname must be at least 2 characters.' });
+  }
+  if (!isValidName(surnameClean)) {
+    return res.status(400).json({ error: 'Surname contains invalid characters.' });
   }
 
-  // Phone — FIX #2
-  const normalizedPhone = normalizePhone(String(phone).trim());
+  // ── other_names validation ─────────────────────────────────────────────────
+  const otherNamesClean = other_names.trim();
+  if (otherNamesClean.length < 2) {
+    return res.status(400).json({ error: 'Other names must be at least 2 characters.' });
+  }
+  if (!isValidName(otherNamesClean)) {
+    return res.status(400).json({ error: 'Other names contains invalid characters.' });
+  }
+
+  // ── gender validation ──────────────────────────────────────────────────────
+  const genderClean = gender.trim();
+  if (!['Male', 'Female'].includes(genderClean)) {
+    return res.status(400).json({ error: 'Gender must be Male or Female.' });
+  }
+
+  // ── telephone validation ───────────────────────────────────────────────────
+  const normalizedPhone = normalizePhone(String(telephone).trim());
   if (!normalizedPhone) {
     return res.status(400).json({
       error: 'Invalid phone number. Please enter a valid Nigerian mobile number (e.g. 08012345678).',
     });
   }
 
-  // Years in APC
-  const yearsNum = parseInt(years_in_apc, 10);
-  if (isNaN(yearsNum) || yearsNum < 0 || yearsNum > 50) {
-    return res.status(400).json({ error: 'Years in APC must be between 0 and 50.' });
+  // ── apc_membership_no validation ──────────────────────────────────────────
+  const membershipClean = String(apc_membership_no).trim();
+  if (membershipClean.length < 5 || membershipClean.length > 50) {
+    return res.status(400).json({ error: 'APC Membership Number must be between 5 and 50 characters.' });
+  }
+  const normalizedMembership = normalizeMembership(membershipClean);
+
+  // ── availability validation ────────────────────────────────────────────────
+  const availabilityClean = availability.trim();
+  if (!['Yes', 'No'].includes(availabilityClean)) {
+    return res.status(400).json({ error: 'Availability must be Yes or No.' });
   }
 
-  // Membership no — FIX #7
-  const normalizedMembership = normalizeMembership(apc_membership_no);
-
-  // Duplicate phone check
-  const { data: existing, error: dupError } = await supabase
-    .from('registrations')
-    .select('id')
-    .eq('phone', normalizedPhone)
-    .maybeSingle();
-
-  if (dupError) {
-    console.error(`[REG:${requestId}] Duplicate check error:`, dupError.message);
-    return res.status(500).json({ error: isProd ? 'Server error.' : dupError.message });
+  // ── optional field length caps ─────────────────────────────────────────────
+  if (lga && String(lga).trim().length > 100) {
+    return res.status(400).json({ error: 'LGA must not exceed 100 characters.' });
   }
-  if (existing) {
-    return res.status(409).json({ error: 'This phone number is already registered.' });
+  if (town && String(town).trim().length > 100) {
+    return res.status(400).json({ error: 'Town must not exceed 100 characters.' });
+  }
+  if (occupation && String(occupation).trim().length > 100) {
+    return res.status(400).json({ error: 'Occupation must not exceed 100 characters.' });
+  }
+  if (voters_card_no && String(voters_card_no).trim().length > 50) {
+    return res.status(400).json({ error: "Voter's Card Number must not exceed 50 characters." });
   }
 
-  // Audit log (non-blocking) — FIX #6: now used for rate limiting too
+  // ── Duplicate checks (phone, APC membership, voters card) ──────────────────
+  const dupChecks = [
+    { field: 'telephone',      value: normalizedPhone,      label: 'phone number' },
+    { field: 'apc_membership_no', value: normalizedMembership, label: 'APC Membership Number' },
+  ];
+  if (voters_card_no?.trim()) {
+    dupChecks.push({ field: 'voters_card_no', value: voters_card_no.trim(), label: "Voter's Card Number" });
+  }
+
+  for (const check of dupChecks) {
+    const { data: existing, error: dupError } = await supabase
+      .from('registrations')
+      .select('id')
+      .eq(check.field, check.value)
+      .limit(1);
+
+    if (dupError) {
+      console.error(`[REG:${requestId}] Duplicate check error (${check.field}):`, dupError.message);
+      return res.status(500).json({ error: isProd ? 'Server error.' : dupError.message });
+    }
+    if (existing && existing.length > 0) {
+      return res.status(409).json({
+        error: `This ${check.label} is already registered.`,
+        field: check.field,
+      });
+    }
+  }
+
+  // ── Audit log (non-blocking) ───────────────────────────────────────────────
   supabase.from('reg_attempts').insert({
     ip_address: ip,
     phone: normalizedPhone,
@@ -181,34 +257,38 @@ app.post('/api/register', async (req, res) => {
     if (e) console.error(`[REG:${requestId}] Audit insert failed:`, e.message);
   });
 
-  // Get next reg code (atomic counter)
+  // ── Get next reg code (atomic counter) ────────────────────────────────────
   const { data: reg_code, error: codeError } = await supabase.rpc('get_next_reg_code');
   if (codeError || !reg_code) {
     console.error(`[REG:${requestId}] Code gen failed:`, codeError?.message);
     return res.status(500).json({ error: isProd ? 'Server error.' : codeError?.message });
   }
 
-  // Insert registration
+  // ── Insert registration ────────────────────────────────────────────────────
   const { error: insertError } = await supabase.from('registrations').insert({
     reg_code,
-    full_name: full_name.trim(),
-    email: email.trim().toLowerCase(),
-    phone: normalizedPhone,
-    state: state.trim(),
-    lga: lga.trim(),
-    ward: ward.trim(),
-    polling_unit: polling_unit.trim(),
+    surname: surnameClean,
+    other_names: otherNamesClean,
+    gender: genderClean,
+    telephone: normalizedPhone,
     apc_membership_no: normalizedMembership,
-    years_in_apc: yearsNum,
+    availability: availabilityClean,
+    lga: lga?.trim() || null,
+    town: town?.trim() || null,
     occupation: occupation?.trim() || null,
+    voters_card_no: voters_card_no?.trim() || null,
     ip_address: ip,
     request_id: requestId,
   });
 
   if (insertError) {
-    // FIX #4: race condition — concurrent duplicate hits 23505
+    // Race condition — concurrent duplicate hits unique constraint
     if (insertError.code === '23505') {
-      return res.status(409).json({ error: 'This phone number is already registered.' });
+      const detail = insertError.message || '';
+      let dupField = 'phone number';
+      if (detail.includes('apc_membership_no')) dupField = 'APC Membership Number';
+      else if (detail.includes('voters_card_no')) dupField = "Voter's Card Number";
+      return res.status(409).json({ error: `This ${dupField} is already registered.` });
     }
     console.error(`[REG:${requestId}] Insert error:`, insertError.message);
     return res.status(500).json({ error: isProd ? 'Server error.' : insertError.message });
@@ -218,7 +298,30 @@ app.post('/api/register', async (req, res) => {
   return res.status(201).json({ success: true, reg_code, message: 'Registration successful!' });
 });
 
-// ── 404 ───────────────────────────────────────────────────────────────────────
+// ── Serve frontend (public folder) ───────────────────────────────────────────
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Serve index.html for any non-API route (SPA fallback)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// ── 404 for unmatched API routes ──────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
+
+// ── Global error handler ─────────────────────────────────────────────────────
+app.use((err, req, res, _next) => {
+  console.error(`[ERROR] ${req.method} ${req.path}:`, err.message);
+  res.status(500).json({ error: 'Internal server error.' });
+});
+
+// ── Local dev server (not used on Vercel) ─────────────────────────────────────
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`\n✅ Server running at http://localhost:${PORT}\n`);
+  });
+}
 
 module.exports = app;

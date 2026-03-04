@@ -303,7 +303,7 @@ select{cursor:pointer;
             <div class="error-msg" id="e-apc_membership_no"></div>
           </div>
           <div class="field" id="f-voters_card_no">
-            <label>Voters Card No. <span class="opt">*</span></label>
+            <label>Voters Card No. <span class="opt">(Optional)</span></label>
             <input type="text" id="voters_card_no" placeholder="e.g. 9AA1B2C3D4E5F6"
                    maxlength="50">
             <div class="error-msg" id="e-voters_card_no"></div>
@@ -471,21 +471,13 @@ function clientValidate() {
     //   errs.push({ field:'apc_membership_no', message:'APC Membership No. contains invalid characters.' });
   }
 
-  // ✅ NEW: Voters Card No. (required)
-  // NOTE: change the id below if your input uses a different id
+  // Voters Card No. is OPTIONAL — only validate length if provided
   const votersCardNoEl = document.getElementById('voters_card_no');
   if (votersCardNoEl) {
     const votersCardNo = votersCardNoEl.value.trim();
-    if (!votersCardNo) {
-      errs.push({ field:'voters_card_no', message:'Voters Card No. is required.' });
-    } else if (votersCardNo.length < 5) {
-      errs.push({ field:'voters_card_no', message:'Voters Card No. is too short.' });
-    } else if (votersCardNo.length > 50) {
-      errs.push({ field:'voters_card_no', message:'Voters Card No. is too long.' });
+    if (votersCardNo && votersCardNo.length > 50) {
+      errs.push({ field:'voters_card_no', message:'Voters Card No. is too long (max 50 characters).' });
     }
-    // Optional: allow only alphanumerics and common separators
-    // else if (!/^[A-Za-z0-9\-\/\s]+$/.test(votersCardNo))
-    //   errs.push({ field:'voters_card_no', message:'Voters Card No. contains invalid characters.' });
   }
 
   return errs;
@@ -539,11 +531,10 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
 
     // ── 201 Success ──
     if (res.status === 201 && data.success) {
-      const parts = data.full_name.split(' ');
-      const first = parts[0];
-      const rest  = parts.slice(1).join(' ');
-      document.getElementById('s-greeting').textContent = 'Dear ' + first + ',';
-      document.getElementById('s-fullname').textContent  = rest;
+      const firstName = payload.other_names.split(' ')[0];
+      const fullName  = payload.surname + ' ' + payload.other_names;
+      document.getElementById('s-greeting').textContent = 'Dear ' + firstName + ',';
+      document.getElementById('s-fullname').textContent  = fullName;
       document.getElementById('s-code').textContent      = data.reg_code;
       document.getElementById('s-message').innerHTML =
         'Your Reg. Code is: <strong>' + data.reg_code + '</strong><br><br>' +
@@ -567,27 +558,25 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
       return;
     }
 
-    // ── 409 Duplicate phone ──
-    if (res.status === 409 && data.code === 'DUPLICATE_PHONE') {
-      showBanner(
-        '&#9888; This phone number is already registered. ' +
-        'Your existing code is: <strong>' + data.reg_code + '</strong>',
-        'warning'
-      );
-      setError('telephone', 'This phone number is already registered.');
-      return;
-    }
-
-    // ── 409 Rare race-condition conflict ──
-    if (res.status === 409 && data.code === 'CONFLICT') {
-      showBanner('A brief conflict occurred. Please try submitting again.', 'warning');
+    // ── 409 Duplicate field ──
+    if (res.status === 409) {
+      const msg = data.error || 'This value is already registered.';
+      showBanner('&#9888; ' + msg, 'warning');
+      const fieldMap = {
+        telephone:        'telephone',
+        apc_membership_no: 'apc_membership_no',
+        voters_card_no:   'voters_card_no',
+      };
+      const targetField = data.field && fieldMap[data.field] ? data.field : 'telephone';
+      setError(targetField, msg);
+      document.getElementById(targetField)?.scrollIntoView({ behavior:'smooth', block:'center' });
       return;
     }
 
     // ── 429 Rate limited ──
     if (res.status === 429) {
       showBanner(
-        data.message || 'Too many attempts. Please wait a few minutes and try again.',
+        data.error || 'Too many attempts. Please wait a few minutes and try again.',
         'warning'
       );
       return;
@@ -610,9 +599,10 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
     }
 
     // ── Any other error ──
-    showBanner(data.message || 'An unexpected error occurred. Please try again.', 'error');
+    showBanner(data.error || data.message || 'An unexpected error occurred. Please try again.', 'error');
 
   } catch (err) {
+    console.error('Registration error:', err);
     if (err.name === 'TimeoutError' || err.name === 'AbortError') {
       showBanner(
         'The request timed out. Please check your internet connection and try again.',
@@ -645,8 +635,10 @@ function resetForm() {
   });
   document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
   clearAll();
+  hideBanner();
   document.getElementById('successView').style.display = 'none';
   document.getElementById('formView').style.display    = 'block';
+  document.getElementById('formView').scrollIntoView({ behavior:'smooth', block:'start' });
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
