@@ -297,13 +297,13 @@ select{cursor:pointer;
 
         <div class="form-row">
           <div class="field" id="f-apc_membership_no">
-            <label>APC Membership No. <span class="opt">*</span></label>
+            <label>APC Membership No. <span class="opt"></span></label>
             <input type="text" id="apc_membership_no" placeholder="e.g. APC/LA/00001"
                    maxlength="50">
             <div class="error-msg" id="e-apc_membership_no"></div>
           </div>
           <div class="field" id="f-voters_card_no">
-            <label>Voters Card No. <span class="opt">(Optional)</span></label>
+            <label>Voters Card No. <span class="opt"></span></label>
             <input type="text" id="voters_card_no" placeholder="e.g. 9AA1B2C3D4E5F6"
                    maxlength="50">
             <div class="error-msg" id="e-voters_card_no"></div>
@@ -538,8 +538,10 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
       document.getElementById('s-code').textContent      = data.reg_code;
       document.getElementById('s-message').innerHTML =
         'Your Reg. Code is: <strong>' + data.reg_code + '</strong><br><br>' +
-        'Thank you for your interest to participate in the endorsement. ' +
-        'Please screenshot the registration code or write it safely somewhere.';
+        'Thank you for your interest in participating in the endorsement. ' +
+        'Please screenshot this registration code or write it down and keep it safely. ' +
+        'Kindly note that only an official access card and meal ticket will guarantee entry to the event. ' +
+        'Details on how to collect these will be communicated in due course.';
 
       document.getElementById('formView').style.display = 'none';
       const sv = document.getElementById('successView');
