@@ -297,7 +297,7 @@ select{cursor:pointer;
 
         <div class="form-row">
           <div class="field" id="f-apc_membership_no">
-            <label>APC Membership No. <span class="opt"></span></label>
+           <label>APC Membership No. <span class="opt">(Optional)</span></label>
             <input type="text" id="apc_membership_no" placeholder="e.g. APC/LA/00001"
                    maxlength="50">
             <div class="error-msg" id="e-apc_membership_no"></div>
@@ -455,21 +455,6 @@ function clientValidate() {
   if (!document.querySelector('input[name="availability"]:checked'))
     errs.push({ field:'availability', message:'Please indicate your availability.' });
 
-  // ✅ NEW: APC Membership No. (required)
-  const apcMembershipNoEl = document.getElementById('apc_membership_no');
-  if (apcMembershipNoEl) {
-    const apcMembershipNo = apcMembershipNoEl.value.trim();
-    if (!apcMembershipNo) {
-      errs.push({ field:'apc_membership_no', message:'APC Membership No. is required.' });
-    } else if (apcMembershipNo.length < 5) {
-      errs.push({ field:'apc_membership_no', message:'APC Membership No. is too short.' });
-    } else if (apcMembershipNo.length > 50) {
-      errs.push({ field:'apc_membership_no', message:'APC Membership No. is too long.' });
-    }
-    // Optional pattern example (edit/remove if you want strict format):
-    // else if (!/^[A-Za-z0-9\/\-]+$/.test(apcMembershipNo))
-    //   errs.push({ field:'apc_membership_no', message:'APC Membership No. contains invalid characters.' });
-  }
 
   // Voters Card No. is OPTIONAL — only validate length if provided
   const votersCardNoEl = document.getElementById('voters_card_no');

@@ -136,7 +136,7 @@ app.post('/api/register', async (req, res) => {
   } = req.body;
 
   // ── Required fields ────────────────────────────────────────────────────────
-  const required = { surname, other_names, gender, telephone, apc_membership_no, availability };
+  const required = { surname, other_names, gender, telephone, availability };
   const missing  = Object.entries(required)
     .filter(([, v]) => !v || String(v).trim() === '')
     .map(([k]) => k);
@@ -168,12 +168,10 @@ app.post('/api/register', async (req, res) => {
     });
   }
 
-  // ── APC Membership No ─────────────────────────────────────────────────────
-  const membershipClean = String(apc_membership_no).trim();
-  if (membershipClean.length < 5 || membershipClean.length > 50) {
-    return res.status(400).json({ error: 'APC Membership Number must be between 5 and 50 characters.' });
-  }
-  const normalizedMembership = normalizeMembership(membershipClean);
+ // ── APC Membership No (optional) ──────────────────────────────
+  const normalizedMembership = apc_membership_no?.trim()
+  ? normalizeMembership(apc_membership_no.trim())
+  : null;
 
   // ── Availability ──────────────────────────────────────────────────────────
   const availabilityClean = availability.trim();
@@ -189,9 +187,11 @@ app.post('/api/register', async (req, res) => {
 
   // ── Duplicate checks (phone + APC membership + voters card) ──────────────
   const dupChecks = [
-    { field: 'telephone',         value: normalizedPhone,      label: 'phone number' },
-    { field: 'apc_membership_no', value: normalizedMembership, label: 'APC Membership Number' },
-  ];
+  { field: 'telephone', value: normalizedPhone, label: 'phone number' },
+];
+if (normalizedMembership) {
+  dupChecks.push({ field: 'apc_membership_no', value: normalizedMembership, label: 'APC Membership Number' });
+}
   if (voters_card_no?.trim()) {
     dupChecks.push({ field: 'voters_card_no', value: voters_card_no.trim(), label: "Voter's Card Number" });
   }
