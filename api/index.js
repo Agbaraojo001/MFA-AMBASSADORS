@@ -48,27 +48,108 @@ app.use(cors({
 app.use(express.json({ limit: '10kb' }));
 
 // ── Registration gate ─────────────────────────────────────────────────────────
-// To close the portal: set REGISTRATION_OPEN=false in your environment variables.
-// To reopen it:        set REGISTRATION_OPEN=true  and redeploy.
-const REGISTRATION_OPEN = process.env.REGISTRATION_OPEN === 'true';
+// Read per-request so Vercel picks up env changes without cold-start issues.
+// To CLOSE: set REGISTRATION_OPEN=false in Vercel env vars → redeploy
+// To REOPEN: set REGISTRATION_OPEN=true  in Vercel env vars → redeploy
+const CLOSED_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MFA Ambassadors — Portal Temporarily Closed</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Open+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue-deep: #0A1172; --blue-mid: #0D47A1; --cyan: #00BCD4;
+    --green-ng: #008751; --cream: #FAFAFA; --muted: #5C6370;
+    --border: rgba(13,71,161,0.12);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Open Sans', sans-serif; background: #E8EAF6;
+    min-height: 100vh; display: flex; align-items: center;
+    justify-content: center; padding: 24px;
+  }
+  .card {
+    background: var(--cream); box-shadow: 0 8px 40px rgba(10,17,114,0.15);
+    border-radius: 2px; width: 100%; max-width: 560px;
+    overflow: hidden; text-align: center;
+  }
+  .tribar { display: flex; height: 6px; }
+  .tribar span:nth-child(1) { flex: 1; background: var(--green-ng); }
+  .tribar span:nth-child(2) { flex: 1; background: #fff; border-top: 1px solid #ddd; }
+  .tribar span:nth-child(3) { flex: 1; background: var(--green-ng); }
+  .inner { padding: 52px 44px 56px; }
+  .icon-wrap {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue-deep), var(--blue-mid));
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 28px; box-shadow: 0 6px 24px rgba(10,17,114,0.25);
+  }
+  .icon-wrap svg { width: 34px; height: 34px; fill: none; stroke: var(--cyan); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .badge {
+    display: inline-block; padding: 4px 16px; background: var(--blue-deep);
+    color: var(--cyan); font-family: 'Montserrat', sans-serif; font-size: 9px;
+    font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+    border-radius: 20px; margin-bottom: 20px;
+  }
+  h1 {
+    font-family: 'Montserrat', sans-serif; font-size: 20px; font-weight: 800;
+    color: var(--blue-deep); text-transform: uppercase; letter-spacing: 0.5px;
+    line-height: 1.35; margin-bottom: 24px;
+  }
+  .divider {
+    width: 48px; height: 3px;
+    background: linear-gradient(90deg, var(--green-ng), var(--cyan));
+    border-radius: 2px; margin: 0 auto 24px;
+  }
+  .message { font-size: 15px; color: #2c2c2c; line-height: 1.8; max-width: 420px; margin: 0 auto; }
+  .message .salutation { font-weight: 600; color: var(--blue-deep); display: block; margin-bottom: 12px; }
+  .message .highlight { font-weight: 600; color: var(--blue-mid); }
+  .footer-note { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); line-height: 1.6; }
+  @media (max-width: 480px) { .inner { padding: 40px 24px 44px; } h1 { font-size: 17px; } }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="tribar"><span></span><span></span><span></span></div>
+    <div class="inner">
+      <div class="icon-wrap">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <div class="badge">MFA Ambassadors · 2026</div>
+      <h1>Endorsement Registration Portal</h1>
+      <div class="divider"></div>
+      <div class="message">
+        <span class="salutation">Dear Prospective Attendee,</span>
+        Due to an <span class="highlight">overwhelming response</span>, our portal is temporarily closed.<br><br>
+        Thank you for your <span class="highlight">amazing support</span> — stay tuned for further updates!
+      </div>
+      <div class="footer-note">
+        MFA Ambassadors &nbsp;·&nbsp; Endorsement Drive 2026<br>
+        Further announcements will be communicated through official channels.
+      </div>
+    </div>
+    <div class="tribar"><span></span><span></span><span></span></div>
+  </div>
+</body>
+</html>`;
 
 app.use((req, res, next) => {
-  if (REGISTRATION_OPEN) return next();
+  // Read env var per-request — works reliably on Vercel serverless
+  const isOpen = process.env.REGISTRATION_OPEN === 'true';
+  if (isOpen) return next();
 
-  // Always allow health checks so Vercel/uptime monitors still pass
+  // Always let health checks through
   if (req.path === '/api/health') return next();
 
-  // API requests get a JSON 503
+  // API calls get a JSON 503
   if (req.path.startsWith('/api/')) {
-    return res.status(503).json({
-      error: 'Registration is currently closed.',
-    });
+    return res.status(503).json({ error: 'Registration is currently closed.' });
   }
 
-  // Every HTML/browser route gets the closed page
-  return res.status(503).sendFile(
-    require('path').join(__dirname, '../public/closed.html')
-  );
+  // All browser/HTML routes get the inline closed page
+  res.status(503).setHeader('Content-Type', 'text/html').send(CLOSED_HTML);
 });
 
 // ── Request correlation ID ────────────────────────────────────────────────────
@@ -79,8 +160,8 @@ app.use((req, _res, next) => {
 
 // ── In-memory rate limiter ────────────────────────────────────────────────────
 const limiter = rateLimit({
-  windowMs:       60 * 60 * 1000, // 1 hour
-  max:            200,             // 200 requests per IP — handles shared WiFi/halls
+  windowMs:       60 * 60 * 1000,
+  max:            200,
   standardHeaders: true,
   legacyHeaders:  false,
   message:        { error: 'Too many requests, please try again later.' },
@@ -114,9 +195,9 @@ function isValidName(value) {
   return /^[A-Za-z\s\-']+$/.test(value.trim());
 }
 
-// ── DB-based rate limiter (survives Vercel cold starts) ───────────────────────
+// ── DB-based rate limiter ─────────────────────────────────────────────────────
 async function isRateLimited(ip) {
-  const windowStart = new Date(Date.now() - 60 * 60 * 1000).toISOString(); // 1 hour
+  const windowStart = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count, error } = await supabase
     .from('reg_attempts')
     .select('*', { count: 'exact', head: true })
@@ -127,7 +208,7 @@ async function isRateLimited(ip) {
     console.error('Rate limit DB check failed, allowing through:', error.message);
     return false;
   }
-  return count >= 200; // matches in-memory limiter
+  return count >= 200;
 }
 
 // ── Health check ──────────────────────────────────────────────────────────────
@@ -147,7 +228,6 @@ app.post('/api/register', async (req, res) => {
   const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || 'unknown';
   console.log(`[REG:${requestId}] Attempt from ${ip}`);
 
-  // DB rate limit
   if (await isRateLimited(ip)) {
     console.warn(`[REG:${requestId}] Rate limited: ${ip}`);
     return res.status(429).json({ error: 'Too many attempts. Please wait an hour before trying again.' });
@@ -159,7 +239,6 @@ app.post('/api/register', async (req, res) => {
     lga, town, occupation, voters_card_no,
   } = req.body;
 
-  // ── Required fields ────────────────────────────────────────────────────────
   const required = { surname, other_names, gender, telephone, availability };
   const missing  = Object.entries(required)
     .filter(([, v]) => !v || String(v).trim() === '')
@@ -168,23 +247,19 @@ app.post('/api/register', async (req, res) => {
     return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}` });
   }
 
-  // ── Surname ────────────────────────────────────────────────────────────────
   const surnameClean = surname.trim();
   if (surnameClean.length < 2)    return res.status(400).json({ error: 'Surname must be at least 2 characters.' });
   if (!isValidName(surnameClean)) return res.status(400).json({ error: 'Surname contains invalid characters.' });
 
-  // ── Other names ───────────────────────────────────────────────────────────
   const otherNamesClean = other_names.trim();
   if (otherNamesClean.length < 2)    return res.status(400).json({ error: 'Other names must be at least 2 characters.' });
   if (!isValidName(otherNamesClean)) return res.status(400).json({ error: 'Other names contains invalid characters.' });
 
-  // ── Gender ────────────────────────────────────────────────────────────────
   const genderClean = gender.trim();
   if (!['Male', 'Female'].includes(genderClean)) {
     return res.status(400).json({ error: 'Gender must be Male or Female.' });
   }
 
-  // ── Phone ─────────────────────────────────────────────────────────────────
   const normalizedPhone = normalizePhone(String(telephone).trim());
   if (!normalizedPhone) {
     return res.status(400).json({
@@ -192,30 +267,26 @@ app.post('/api/register', async (req, res) => {
     });
   }
 
- // ── APC Membership No (optional) ──────────────────────────────
   const normalizedMembership = apc_membership_no?.trim()
-  ? normalizeMembership(apc_membership_no.trim())
-  : null;
+    ? normalizeMembership(apc_membership_no.trim())
+    : null;
 
-  // ── Availability ──────────────────────────────────────────────────────────
   const availabilityClean = availability.trim();
   if (!['Yes', 'No'].includes(availabilityClean)) {
     return res.status(400).json({ error: 'Availability must be Yes or No.' });
   }
 
-  // ── Optional field length caps ────────────────────────────────────────────
   if (lga          && String(lga).trim().length          > 100) return res.status(400).json({ error: 'LGA must not exceed 100 characters.' });
   if (town         && String(town).trim().length         > 100) return res.status(400).json({ error: 'Town must not exceed 100 characters.' });
   if (occupation   && String(occupation).trim().length   > 100) return res.status(400).json({ error: 'Occupation must not exceed 100 characters.' });
   if (voters_card_no && String(voters_card_no).trim().length > 50) return res.status(400).json({ error: "Voter's Card Number must not exceed 50 characters." });
 
-  // ── Duplicate checks (phone + APC membership + voters card) ──────────────
   const dupChecks = [
-  { field: 'telephone', value: normalizedPhone, label: 'phone number' },
-];
-if (normalizedMembership) {
-  dupChecks.push({ field: 'apc_membership_no', value: normalizedMembership, label: 'APC Membership Number' });
-}
+    { field: 'telephone', value: normalizedPhone, label: 'phone number' },
+  ];
+  if (normalizedMembership) {
+    dupChecks.push({ field: 'apc_membership_no', value: normalizedMembership, label: 'APC Membership Number' });
+  }
   if (voters_card_no?.trim()) {
     dupChecks.push({ field: 'voters_card_no', value: voters_card_no.trim(), label: "Voter's Card Number" });
   }
@@ -240,7 +311,6 @@ if (normalizedMembership) {
     }
   }
 
-  // ── Audit log (non-blocking) ──────────────────────────────────────────────
   supabase.from('reg_attempts').insert({
     ip_address:   ip,
     phone:        normalizedPhone,
@@ -250,14 +320,12 @@ if (normalizedMembership) {
     if (e) console.error(`[REG:${requestId}] Audit insert failed:`, e.message);
   });
 
-  // ── Get next reg code ─────────────────────────────────────────────────────
   const { data: reg_code, error: codeError } = await supabase.rpc('get_next_reg_code');
   if (codeError || !reg_code) {
     console.error(`[REG:${requestId}] Code gen failed:`, codeError?.message);
     return res.status(500).json({ error: isProd ? 'Server error.' : codeError?.message });
   }
 
-  // ── Insert ────────────────────────────────────────────────────────────────
   const { error: insertError } = await supabase.from('registrations').insert({
     reg_code,
     surname:          surnameClean,
@@ -293,13 +361,13 @@ if (normalizedMembership) {
 // ── Static frontend ───────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, '../public')));
 
-// ── SPA fallback (non-API routes serve index.html) ────────────────────────────
+// ── SPA fallback ──────────────────────────────────────────────────────────────
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-// ── 404 (unmatched API routes) ────────────────────────────────────────────────
+// ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
 // ── Global error handler ──────────────────────────────────────────────────────
