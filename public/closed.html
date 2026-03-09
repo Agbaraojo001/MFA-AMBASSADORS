@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MFA Ambassadors — Portal Temporarily Closed</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Open+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue-deep: #0A1172;
+    --blue-mid: #0D47A1;
+    --cyan: #00BCD4;
+    --green-ng: #008751;
+    --white: #FFFFFF;
+    --cream: #FAFAFA;
+    --muted: #5C6370;
+    --border: rgba(13,71,161,0.12);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Open Sans', sans-serif;
+    background: #E8EAF6;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .card {
+    background: var(--cream);
+    box-shadow: 0 8px 40px rgba(10,17,114,0.15);
+    border-radius: 2px;
+    width: 100%;
+    max-width: 560px;
+    overflow: hidden;
+    text-align: center;
+  }
+
+  /* Nigerian flag tribar */
+  .tribar { display: flex; height: 6px; }
+  .tribar span:nth-child(1) { flex: 1; background: var(--green-ng); }
+  .tribar span:nth-child(2) { flex: 1; background: #fff; border-top: 1px solid #ddd; }
+  .tribar span:nth-child(3) { flex: 1; background: var(--green-ng); }
+
+  .inner {
+    padding: 52px 44px 56px;
+  }
+
+  /* Padlock icon */
+  .icon-wrap {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue-deep), var(--blue-mid));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 28px;
+    box-shadow: 0 6px 24px rgba(10,17,114,0.25);
+  }
+  .icon-wrap svg {
+    width: 34px;
+    height: 34px;
+    fill: none;
+    stroke: var(--cyan);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 4px 16px;
+    background: var(--blue-deep);
+    color: var(--cyan);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--blue-deep);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.35;
+    margin-bottom: 24px;
+  }
+
+  .divider {
+    width: 48px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--green-ng), var(--cyan));
+    border-radius: 2px;
+    margin: 0 auto 24px;
+  }
+
+  .message {
+    font-size: 15px;
+    color: #2c2c2c;
+    line-height: 1.8;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  .message .salutation {
+    font-weight: 600;
+    color: var(--blue-deep);
+    display: block;
+    margin-bottom: 12px;
+    font-size: 15px;
+  }
+
+  .message .highlight {
+    font-weight: 600;
+    color: var(--blue-mid);
+  }
+
+  .footer-note {
+    margin-top: 36px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  @media (max-width: 480px) {
+    .inner { padding: 40px 24px 44px; }
+    h1 { font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="tribar">
+      <span></span><span></span><span></span>
+    </div>
+
+    <div class="inner">
+      <div class="icon-wrap">
+        <!-- Padlock SVG -->
+        <svg viewBox="0 0 24 24">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+
+      <div class="badge">MFA Ambassadors · 2026</div>
+
+      <h1>Registration Portal</h1>
+
+      <div class="divider"></div>
+
+      <div class="message">
+        <span class="salutation">Dear Prospective Attendee,</span>
+        Due to an <span class="highlight">overwhelming response</span>, our portal is
+        temporarily closed.<br><br>
+        Thank you for your <span class="highlight">amazing support</span> — stay tuned
+        for further updates!
+      </div>
+
+      <div class="footer-note">
+        <!-- MFA Ambassadors &nbsp;·&nbsp; Endorsement Drive 2026<br> -->
+        Further announcements will be communicated through official channels.
+      </div>
+    </div>
+
+    <div class="tribar">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</body>
+</html>
