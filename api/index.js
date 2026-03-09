@@ -47,6 +47,30 @@ app.use(cors({
 // ── Body parser ───────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10kb' }));
 
+// ── Registration gate ─────────────────────────────────────────────────────────
+// To close the portal: set REGISTRATION_OPEN=false in your environment variables.
+// To reopen it:        set REGISTRATION_OPEN=true  and redeploy.
+const REGISTRATION_OPEN = process.env.REGISTRATION_OPEN === 'true';
+
+app.use((req, res, next) => {
+  if (REGISTRATION_OPEN) return next();
+
+  // Always allow health checks so Vercel/uptime monitors still pass
+  if (req.path === '/api/health') return next();
+
+  // API requests get a JSON 503
+  if (req.path.startsWith('/api/')) {
+    return res.status(503).json({
+      error: 'Registration is currently closed.',
+    });
+  }
+
+  // Every HTML/browser route gets the closed page
+  return res.status(503).sendFile(
+    require('path').join(__dirname, '../public/closed.html')
+  );
+});
+
 // ── Request correlation ID ────────────────────────────────────────────────────
 app.use((req, _res, next) => {
   req.requestId = req.headers['x-request-id'] || uuidv4();
