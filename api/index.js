@@ -379,7 +379,7 @@ app.use((err, req, res, _next) => {
 // ── Local dev server ──────────────────────────────────────────────────────────
 if (!isProd) {
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`\n✅ Server running at http://localhost:${PORT}\n`));
+  app.listen(PORT, () => console.log(`\n✅ production server is live at http://localhost:${PORT}\n`));
 }
 
 module.exports = app;
